@@ -42,11 +42,11 @@ async def test_subscription(user_id: int, bot: Bot) -> list:
         try:
             chat_member = await bot.get_chat_member(chat_id, user_id)
             if chat_member.status not in ['member', 'administrator', 'creator']:
-                print(chat_member)
+                # print(chat_member)
                 url = await channel_requests.get_channel_url_by_chat_id(chat_id)
                 if url:
                     unsubscribed_channels.append(url)
-            print(unsubscribed_channels)
+            # print(unsubscribed_channels)
         except Exception as e:
             # Xatolikni foydalanuvchiga yuborish
             print(e)

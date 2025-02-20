@@ -13,7 +13,8 @@ async def start_kino(message: Message, bot: Bot, state: FSMContext):
     if not_subscribed_urls:
         await channel.send_subscription_prompt(message, not_subscribed_urls)
     else:
-        await message.answer("🔘 Tugmalardan birini tanlang:", reply_markup=kb.kino_btn)
+        await bot.send_message(chat_id=user_id,text="🔘 Tugmalardan birini tanlang:", reply_markup=kb.kino_btn)
+        # await message.answer()
         await state.set_state(client_states.Kino.start)
 
 async def state_kino1(message: Message, bot: Bot, state: FSMContext):
@@ -23,7 +24,8 @@ async def state_kino1(message: Message, bot: Bot, state: FSMContext):
         if not_subscribed_urls:
             await channel.send_subscription_prompt(message, not_subscribed_urls)
         else:
-            await message.answer("🎬📥 **Kino kodini kiriting:**\n\nIltimos, kerakli kino kodini kiriting. Kod yordamida kino topishingiz mumkin.",reply_markup=kb.back)
+            await bot.send_message(chat_id=user_id,text="🎬📥 **Kino kodini kiriting:**\n\nIltimos, kerakli kino kodini kiriting. Kod yordamida kino topishingiz mumkin.",reply_markup=kb.back)
+            # await message.answer("🎬📥 **Kino kodini kiriting:**\n\nIltimos, kerakli kino kodini kiriting. Kod yordamida kino topishingiz mumkin.",reply_markup=kb.back)
             await state.set_state(client_states.Kino.code)
     elif message.text == "🎲 Tasodifiy kino":
         user_id = message.from_user.id

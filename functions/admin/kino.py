@@ -11,6 +11,7 @@ async def start_kino(message: Message, bot: Bot, state: FSMContext):
     if await is_config.is_admin(message.from_user.id):
         await message.answer("Tugmalardan birini tanlang", reply_markup=kb.kino_btn)
         await state.set_state(admin_states.Kino.start1)
+MAX_MESSAGE_LENGTH = 4096 
 
 async def state_kino1(message: Message, bot: Bot, state: FSMContext):
     if message.text == "Kino Yuklash":
@@ -20,20 +21,21 @@ async def state_kino1(message: Message, bot: Bot, state: FSMContext):
         await message.answer("Kino ko'dini kiriting",reply_markup=kb.menu_btn)
         await state.set_state(admin_states.Kino.delete)
 
+
     elif message.text == "Kinolar ro'yhati":
         kinolar = await get_kinos()
         if kinolar:
-            # Create a list to store the formatted entries
             kino_entries = []
             for index, kino in enumerate(kinolar, start=1):
                 entry = f"{index}. Kino nomi = {kino.title} Kodi = {kino.code}"
                 kino_entries.append(entry)
 
-            # Join all entries with new lines
-            kino_message = "\n".join(kino_entries)
+            kino_message = "\n".join(kino_entries)  # Hammasini bitta matn sifatida birlashtiramiz
 
-            # Send the formatted message
-            await message.answer(kino_message)
+            # Xabarni cheklangan uzunlikka bo‘lib yuboramiz
+            while kino_message:
+                await message.answer(kino_message[:MAX_MESSAGE_LENGTH])  # 4096 tagacha bo‘lgan qismini jo‘natamiz
+                kino_message = kino_message[MAX_MESSAGE_LENGTH:]  # Qolgan qismini keyingi xabarga saqlaymiz
         else:
             await message.answer("Kinolar ro'yxati bo'sh.")
     elif message.text == "Ortga":

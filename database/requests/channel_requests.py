@@ -19,7 +19,7 @@ async def get_channel_urls() -> list:
             return urls
     except Exception as e:
         print(f"Ma'lumotlar bazasini so'rov bajarishda xatolik yuz berdi: {e}")
-        return []
+        # return []
     
 async def get_channel_chat_ids() -> list:
     query = select(Channels.chat_id)
