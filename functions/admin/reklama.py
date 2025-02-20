@@ -1,120 +1,117 @@
-from aiogram import  Bot,Router,F
-from aiogram.types import Message,CallbackQuery
-from states.admin_states import Reklama
+import asyncio
+from aiogram import Bot, Router, F
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramForbiddenError
+from states.admin_states import Reklama
 from keyboards.admin import *
 from database.requests.users import *
-# from database.requests.user_request import *
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton,InlineKeyboardButton,InlineKeyboardMarkup
-from aiogram.types import Location
-import requests
 from config import ADMIN
 
-async def start_reklama(message: Message, bot: Bot, state: FSMContext):
-    if message.from_user.id in ADMIN:
+router = Router()
 
-        await message.answer("Reklama matnini kiriting",reply_markup=menu_btn)
+@router.message(F.text == "Reklama Yuborish")
+async def start_reklama(message: Message, state: FSMContext):
+    if message.from_user.id in ADMIN:
+        await message.answer("📩 Reklama matnini kiriting:", reply_markup=menu_btn)
         await state.set_state(Reklama.text)
     else:
-        await message.answer("Вы не админ",reply_markup=menu_btn)
+        await message.answer("🚫 Siz admin emassiz!", reply_markup=menu_btn)
 
-async def start_reklama_text(message: Message, bot: Bot, state: FSMContext):
+@router.message(Reklama.text)
+async def start_reklama_text(message: Message, state: FSMContext):
     if message.text == "⬅️  Назад":
         await state.clear()
-        await message.answer("Привет Aдмин",reply_markup=menu_btn)
+        await message.answer("Привет Aдмин", reply_markup=menu_btn)
     else:
         await state.update_data(text=message.text)
-        await message.answer("Rasm yoki Video yuboring",reply_markup=menu_btn)
+        await message.answer("📸 Rasm yoki 🎥 Video yuboring:", reply_markup=menu_btn)
         await state.set_state(Reklama.media)
 
-
-async def start_reklama_media(message: Message, bot: Bot, state: FSMContext):
+@router.message(Reklama.media)
+async def start_reklama_media(message: Message, state: FSMContext, bot: Bot):
     tg_id = message.from_user.id
+
     if message.text == "⬅️  Назад":
         await state.clear()
-        await message.answer("Привет Aдмин",reply_markup=menu_btn)
+        await message.answer("Привет Aдмин", reply_markup=menu_btn)
+        return
 
-    elif message.video:
+    media_type = None
+    file_id = None
+
+    if message.video:
         file_id = message.video.file_id
-        await state.update_data(media=file_id)
-        await state.update_data(media_type="video")
-        await message.answer("Video qabul qilindi✅", reply_markup=menu_btn)
-        data = await state.get_data()
-        text_message=data.get('text')
-        b= data.get('media')
-        await bot.send_video(chat_id=tg_id, video=b,caption=text_message,reply_markup=confirm)
-        await state.set_state(Reklama.verify)
+        media_type = "video"
     elif message.photo:
         file_id = message.photo[-1].file_id
-        # await message.answer(file_id)
-        await state.update_data(media=file_id)
-        await state.update_data(media_type="photo")
-        await message.answer("Rasm qabul qilindi✅",reply_markup=menu_btn)
-        # await message.answer(file_id)
+        media_type = "photo"
+
+    if media_type:
+        await state.update_data(media=file_id, media_type=media_type)
+        await message.answer(f"✅ {'Video' if media_type == 'video' else 'Rasm'} qabul qilindi.", reply_markup=menu_btn)
 
         data = await state.get_data()
-        b= data.get('media')
-        text_message=data.get('text')
-        await bot.send_photo(chat_id=tg_id, photo=b,caption=text_message,reply_markup=confirm)
+        text_message = data.get('text')
+
+        if media_type == "video":
+            await bot.send_video(chat_id=tg_id, video=file_id, caption=text_message, reply_markup=confirm)
+        else:
+            await bot.send_photo(chat_id=tg_id, photo=file_id, caption=text_message, reply_markup=confirm)
+
         await state.set_state(Reklama.verify)
-
     else:
-        await message.answer("Rasm yoki Video jo'nating",reply_markup=menu_btn)
+        await message.answer("🚫 Rasm yoki video jo‘nating!", reply_markup=menu_btn)
 
-from aiogram.exceptions import TelegramForbiddenError
-async def sms_verify(message: Message, bot: Bot, state: FSMContext):
-    tg_id=message.from_user.id
+async def send_message(user, bot, media_type, media, text):
+    try:
+        if media_type == "photo":
+            await bot.send_photo(chat_id=user, photo=media, caption=text)
+        else:
+            await bot.send_video(chat_id=user, video=media, caption=text)
+        return True
+    except TelegramForbiddenError:
+        return False
+    except Exception:
+        return False
+
+@router.message(Reklama.verify)
+async def sms_verify(message: Message, state: FSMContext, bot: Bot):
+    tg_id = message.from_user.id
+
     if message.text == "⬅️  Назад":
         await state.clear()
-        await message.answer("Привет Aдмин",reply_markup=menu_btn)
-    
-    elif message.text == "✅ Tasdiqlash":
+        await message.answer("Привет Aдмин", reply_markup=menu_btn)
+        return
+
+    if message.text == "✅ Tasdiqlash":
         data = await state.get_data()
-        media_type=data.get('media_type')
-        if media_type == "photo":
-            text=data.get('text')
-            photo=data.get('media')
-            users = await get_users_tg_ids()
-            forbidden_count = 0
-            count_for=0
-            try:
-                for user in users:
-                    count_for += 1
-                    try:
-                        await bot.send_photo(chat_id=user, photo=photo, caption=text)
-                    except TelegramForbiddenError:
-                        forbidden_count += 1  # Agar TelegramForbiddenError yuzaga kelsa, hisoblagichni oshirish
+        media_type = data.get('media_type')
+        text = data.get('text')
+        media = data.get('media')
 
-            except Exception as e:
-                await bot.send_message(chat_id=tg_id, text=f"An unexpected error occurred: {e}")
+        if media_type not in ["photo", "video"]:
+            await message.answer("🚫 Faqat rasm yoki video yuborishingiz mumkin!")
+            return
 
-            await bot.send_message(chat_id=tg_id, text=f" {count_for}ta foydalanuvchidan {count_for - forbidden_count } tasiga reklama jonatildi {forbidden_count} ta foydalanuvchi aktiv emas ", parse_mode='HTML', reply_markup=menu_btn)
-            await state.clear()
+        await message.answer("📤 Kuting, reklama tarqatilyapti...", reply_markup=await_btn)
 
-        elif media_type == "video":
-            text=data.get('text')
-            video=data.get('media')
-            users = await get_users_tg_ids()
-            forbidden_count = 0
-            count_for=0
-            try:
-                for user in users:
-                    count_for += 1
-                    try:
-                		    await bot.send_video(chat_id=user,video=video,caption=text)
-                    except TelegramForbiddenError:
-                        forbidden_count += 1  # Agar TelegramForbiddenError yuzaga kelsa, hisoblagichni oshirish
+        users = await get_users_tg_ids()
+        total_users = len(users)
 
+        # Parallel ravishda yuborish
+        tasks = [asyncio.create_task(send_message(user, bot, media_type, media, text)) for user in users]
+        results = await asyncio.gather(*tasks)
+        
+        success_count = results.count(True)
+        failed_count = results.count(False)
 
-            except Exception as e:
-                await bot.send_message(chat_id=tg_id, text=f"An unexpected error occurred: {e}")
-
-            await bot.send_message(chat_id=tg_id, text=f"{count_for}ta foydalanuvchidan {count_for - forbidden_count } tasiga reklama jonatildi {forbidden_count} ta foydalanuvchi aktiv emas ", parse_mode='HTML', reply_markup=menu_btn)
-            
-            await state.clear()
-
-        else:
-            await message.answer("Faqat rasm yoki video jonata olasiz")
-
+        await bot.send_message(
+            chat_id=tg_id,
+            text=f"📢 <b>{total_users}</b> foydalanuvchidan <b>{success_count}</b> tasiga reklama jo‘natildi.\n❌ <b>{failed_count}</b> foydalanuvchi aktiv emas.",
+            parse_mode='HTML',
+            reply_markup=menu_btn
+        )
+        await state.clear()
     else:
-        message.answer("Используйте только кнопки")   
+        await message.answer("🚫 Faqat tugmalarni ishlating!")

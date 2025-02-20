@@ -30,6 +30,16 @@ menu_buttons = [
 ]
 menu_btn = ReplyKeyboardMarkup(keyboard=menu_buttons, resize_keyboard=True,is_persistent=True)
 
+
+
+
+menu_await = [
+    [ KeyboardButton(text="Kuting")],
+
+
+]
+await_btn = ReplyKeyboardMarkup(keyboard=menu_await, resize_keyboard=True,is_persistent=True)
+
 chan_btn = [
     [ KeyboardButton(text="Kanal qo'shish"), KeyboardButton(text="Kanal o'chirish")],
     [ KeyboardButton(text="Kanallar ro'yhati"), KeyboardButton(text="Ortga")],
